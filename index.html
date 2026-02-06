@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gonyang & Ddongkkae Diary</title>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+    <style>
+        @font-face { font-family: 'DungGeunMo'; src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/DungGeunMo.woff') format('woff'); }
+        :root { --diary-pink: #F4C2C2; --diary-dark-pink: #E89999; --belt-pink: #F4B2B2; --silver-frame: linear-gradient(145deg, #cfd8dc, #eceff1, #90a4ae); }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body { 
+            margin: 0; font-family: 'DungGeunMo', sans-serif; 
+            background-color: #F8E0E0;
+            background-image: radial-gradient(white 15%, transparent 16%), radial-gradient(white 15%, transparent 16%);
+            background-size: 60px 60px;
+            display: flex; flex-direction: column; align-items: center; 
+            justify-content: center; height: 100vh; overflow: hidden;
+            padding-bottom: 20px;
+        }
+
+        .wrapper { 
+            position: relative; width: 90%; max-width: 340px; 
+            height: 65vh; perspective: 1000px; margin-bottom: 20px;
+        }
+
+        .diary-container {
+            width: 100%; height: 100%; position: absolute;
+            background: var(--diary-pink); border-radius: 0 35px 35px 0; 
+            box-shadow: 10px 20px 40px rgba(0,0,0,0.15);
+            display: flex; flex-direction: column; z-index: 100;
+            transition: transform 1s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.5s;
+            transform-origin: left; padding-top: 50px;
+        }
+        
+        #cover-title {
+            font-family: 'Jua', sans-serif; color: white; text-align: center; font-size: 31px; line-height: 1.4;
+            letter-spacing: 0.12em;
+            text-shadow: -2px -2px 0 var(--diary-dark-pink), 2px -2px 0 var(--diary-dark-pink), -2px 2px 0 var(--diary-dark-pink), 2px 2px 0 var(--diary-dark-pink), 0px 3px 6px rgba(0,0,0,0.1);
+            margin: 0; z-index: 102; pointer-events: none;
+        }
+
+        .paper-area { 
+            position: absolute; width: 94%; height: 96%; top: 2%; left: 0;
+            background: white; border-radius: 0 25px 25px 0; z-index: 10;
+            display: none; padding: 18px; flex-direction: column;
+            border-left: 2px solid rgba(0,0,0,0.1);
+        }
+        .theme-grid { background-image: linear-gradient(#00000010 1px, transparent 1px), linear-gradient(90deg, #00000010 1px, transparent 1px); background-size: 20px 20px; }
+
+        .diary-belt { 
+            width: 150px; height: 75px; background: var(--belt-pink); 
+            position: absolute; right: -5px; top: 50%; transform: translateY(-50%);
+            border-radius: 15px 0 0 15px; z-index: 1000; 
+            display: flex; align-items: center; justify-content: flex-start; padding-left: 15px; transition: 0.8s;
+        }
+
+        .silver-lock-frame { background: var(--silver-frame); padding: 5px; border-radius: 10px; display: flex; gap: 4px; }
+
+        .sticker-wrapper {
+            position: absolute; cursor: move; user-select: none; 
+            touch-action: none; z-index: 110; padding: 12px;
+            border: 2px dashed transparent; transform-origin: center center;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .sticker-wrapper.selected { border: 2px dashed #666 !important; background: rgba(255,255,255,0.3); z-index: 500; }
+        
+        .delete-btn { 
+            position: absolute; top: -12px; right: -12px; width: 28px; height: 28px; 
+            background: #ff5252; color: white; border-radius: 50%; 
+            display: none; align-items: center; justify-content: center; 
+            font-size: 18px; border: 2px solid white; z-index: 600;
+        }
+        .resize-handle {
+            position: absolute; bottom: -12px; right: -12px; width: 22px; height: 22px;
+            background: white; border: 2px solid #666; border-radius: 50%;
+            display: none; z-index: 600;
+        }
+        .sticker-wrapper.selected .delete-btn, 
+        .sticker-wrapper.selected .resize-handle { display: flex !important; }
+
+        .sticker-wrapper img { width: 100%; height: 100%; border: none; pointer-events: none; }
+        .sticker-content { pointer-events: none; white-space: nowrap; font-size: 40px; }
+
+        .global-controls { position: relative; display: flex; gap: 12px; z-index: 3000; }
+        .control-btn { 
+            background: white; border: 2px solid var(--diary-dark-pink); 
+            padding: 10px 18px; border-radius: 12px; 
+            font-size: 15px; font-family: 'DungGeunMo'; cursor: pointer; 
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 0 var(--diary-dark-pink); color: #444;
+        }
+        .control-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--diary-dark-pink); }
+
+        .side-tabs { position: absolute; right: -40px; top: 50px; display: none; flex-direction: column; gap: 8px; z-index: 500; }
+        .tab { width: 40px; height: 60px; border-radius: 0 10px 10px 0; display: flex; align-items: center; justify-content: center; writing-mode: vertical-rl; cursor: pointer; color: white; font-size: 11px; }
+
+        section { display: none; width: 100%; height: 100%; flex-direction: column; overflow: hidden; }
+        section.active { display: flex; }
+
+        .weather-btn { font-size: 22px; cursor: pointer; opacity: 0.3; transition: 0.2s; display: inline-block; padding: 2px; }
+        .weather-btn.selected { opacity: 1; transform: scale(1.2); }
+
+        .title-row { display: flex; align-items: center; border-bottom: 2px solid #00000010; margin-bottom: 10px; padding: 5px 0; }
+        .title-label { font-size: 15px; color: #333; margin-right: 5px; white-space: nowrap; }
+        .title-input { flex: 1; font-size: 15px; border:none; outline:none; font-family: 'DungGeunMo'; background: transparent; }
+        
+        .dial-window { width: 28px; height: 38px; background: white; border-radius: 4px; overflow: hidden; position: relative; border: 1.5px solid #78909c; }
+        .dial-strip { position: absolute; top: 0; left: 0; width: 100%; transition: transform 0.4s; display: flex; flex-direction: column; }
+        .dial-number { width: 28px; height: 38px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #333; font-weight: bold; }
+
+        #custom-modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 5000; justify-content: center; align-items: center;
+        }
+        .modal-content {
+            background: white; padding: 20px; border-radius: 20px; width: 80%; max-width: 300px;
+            text-align: center; border: 3px solid var(--diary-pink);
+        }
+        .modal-content input {
+            width: 100%; padding: 10px; margin: 15px 0; border: 2px solid #eee;
+            border-radius: 10px; font-family: 'DungGeunMo'; outline: none; text-align: center;
+        }
+        .modal-btns { display: flex; gap: 10px; justify-content: center; }
+        .modal-btns button {
+            padding: 8px 15px; border-radius: 10px; border: none; font-family: 'DungGeunMo'; cursor: pointer;
+        }
+    </style>
+</head>
+<body onclick="deselectAll(event)">
+
+    <div class="wrapper">
+        <div class="diary-container" id="diary-cover">
+            <h2 id="cover-title">고냥이와 똔깨의<br>비밀 교환일기</h2>
+            <div class="diary-belt" id="diary-belt">
+                <div class="silver-lock-frame">
+                    <div class="dial-window" onclick="rotateDial(0)"><div class="dial-strip" id="strip-0"><div class="dial-number">0</div><div class="dial-number">1</div><div class="dial-number">2</div><div class="dial-number">3</div><div class="dial-number">4</div><div class="dial-number">5</div></div></div>
+                    <div class="dial-window" onclick="rotateDial(1)"><div class="dial-strip" id="strip-1"><div class="dial-number">0</div><div class="dial-number">1</div><div class="dial-number">2</div><div class="dial-number">3</div><div class="dial-number">4</div><div class="dial-number">5</div></div></div>
+                    <div class="dial-window" onclick="rotateDial(2)"><div class="dial-strip" id="strip-2"><div class="dial-number">0</div><div class="dial-number">1</div><div class="dial-number">2</div><div class="dial-number">3</div><div class="dial-number">4</div><div class="dial-number">5</div></div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="paper-area" id="paper-area">
+            <div class="side-tabs" id="main-tabs">
+                <div class="tab" style="background:#A9C9A9;" onclick="location.reload()">표지</div>
+                <div class="tab" style="background:#E9B2B2;" onclick="showSection('write')">쓰기</div>
+                <div class="tab" style="background:#A2C4D9;" onclick="fetchDiaryList()">읽기</div>
+            </div>
+
+            <section id="write-section" class="active">
+                <div class="meta-line" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <div id="formatted-date" style="font-weight:bold; color:#666; font-size:14px;"></div>
+                    <div class="weather-row">
+                        <span class="weather-btn selected" onclick="selectWeather(this, '☀️')">☀️</span>
+                        <span class="weather-btn" onclick="selectWeather(this, '🌧️')">🌧️</span>
+                        <span class="weather-btn" onclick="selectWeather(this, '☁️')">☁️</span>
+                        <span class="weather-btn" onclick="selectWeather(this, '❄️')">❄️</span>
+                    </div>
+                </div>
+                <div class="title-row">
+                    <span class="title-label">제목:</span>
+                    <input type="text" id="diary-title" class="title-input" placeholder="여기에 입력!">
+                </div>
+                <div style="font-size:11px; color:#e91e63; margin-bottom:5px; cursor:pointer;" onclick="document.getElementById('photo-input').click()">[📸 사진 추가]</div>
+                <input type="file" id="photo-input" accept="image/*" style="display:none;" onchange="addPhotoSticker(this)">
+                <textarea id="diary-body" style="flex:1; font-size:15px; border:none; outline:none; font-family:'DungGeunMo'; background:transparent; line-height:1.6;" placeholder="비밀 이야기를 적어줘..."></textarea>
+                <button id="send-btn" onclick="saveDiary()" ontouchstart="saveDiary()" style="background:var(--diary-pink); color:white; border:none; padding:12px; border-radius:20px; font-family:'DungGeunMo'; width:100%; margin-top:5px; z-index:3000; position:relative;">저장 ✨</button>
+            </section>
+
+            <section id="view-section">
+                <div style="display:flex; justify-content:space-between; margin-bottom:10px;"><input type="date" id="target-date" onchange="jumpToDate(this.value)" style="font-family:'DungGeunMo'; font-size:11px;"></div>
+                <div id="v-date" style="font-size:11px; color:#666;"></div>
+                <h2 id="v-title" style="margin:5px 0; border-bottom:1px solid #eee; font-size:18px;"></h2>
+                <div id="v-body" style="line-height:1.6; white-space:pre-wrap; flex:1; overflow-y:auto; font-size:14px;"></div>
+                <div id="v-photo-area" style="position:relative; flex:1;"></div>
+            </section>
+        </div>
+    </div>
+
+    <div class="global-controls" id="sticker-btns">
+        <button class="control-btn" onclick="openInputModal('이모지')" ontouchstart="openInputModal('이모지')">이모지</button>
+        <button class="control-btn" onclick="openInputModal('글넣기')" ontouchstart="openInputModal('글넣기')">글넣기</button>
+        <button class="control-btn" style="background:#fff3cd;" onclick="saveCover()" ontouchstart="saveCover()">저장</button>
+    </div>
+
+    <div id="custom-modal">
+        <div class="modal-content">
+            <div id="modal-msg" style="font-size: 14px; color: #666;">내용을 입력해주세요</div>
+            <input type="text" id="modal-input">
+            <div class="modal-btns">
+                <button onclick="closeModal(false)">취소</button>
+                <button style="background: var(--diary-pink); color: white;" onclick="closeModal(true)">확인</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbzH6No_BA3NKNZG4b9Dv5UPc6NzcU-T9O2vxRQn-VccDQEfapDVgueqQv0W5ka-nkPH/exec";
+        let dialValues = [0,0,0], selectedWeather = '☀️', diaryData = [], currentIndex = 0;
+        const pastelColors = ['#FFF0F5', '#E6E6FA', '#F0FFF0', '#FFFACD', '#F0F8FF', '#FDF5E6'];
+        let currentPaperColor = '#ffffff';
+
+        document.getElementById('formatted-date').innerText = new Date().toLocaleDateString();
+        
+        window.onload = function() {
+            loadCover();
+            checkNfcUnlock();
+        };
+
+        function checkNfcUnlock() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('key') === 'open') {
+                setTimeout(unlockDiary, 500);
+            }
+        }
+
+        let activeCallback = null;
+        function openInputModal(type) {
+            const modal = document.getElementById('custom-modal');
+            const msg = document.getElementById('modal-msg');
+            const input = document.getElementById('modal-input');
+            input.value = (type === '이모지') ? "🐾" : "안녕!";
+            msg.innerText = type + " 내용을 입력하세요";
+            modal.style.display = 'flex';
+            input.focus();
+            activeCallback = (val) => { if(val) createStickerElement(val, 'text', {x:150, y:200, scale:1}, 'diary-cover'); };
+        }
+
+        function closeModal(isConfirm) {
+            const modal = document.getElementById('custom-modal');
+            const input = document.getElementById('modal-input');
+            if(isConfirm && activeCallback) activeCallback(input.value);
+            modal.style.display = 'none';
+            activeCallback = null;
+        }
+
+        function rotateDial(idx) {
+            dialValues[idx] = (dialValues[idx] + 1) % 6;
+            document.getElementById(`strip-${idx}`).style.transform = `translateY(-${dialValues[idx] * 38}px)`;
+            if (dialValues.join('') === "531") unlockDiary();
+        }
+
+        function unlockDiary() {
+            document.getElementById('diary-cover').style.transform = "rotateY(-110deg)";
+            document.getElementById('diary-cover').style.opacity = "0";
+            document.getElementById('diary-belt').style.display = "none";
+            document.getElementById('sticker-btns').style.display = "none";
+            const paper = document.getElementById('paper-area');
+            paper.style.display = "flex";
+            paper.classList.add('theme-grid');
+            document.getElementById('main-tabs').style.display = 'flex';
+            setRandomPaper();
+        }
+
+        function setRandomPaper() {
+            currentPaperColor = pastelColors[Math.floor(Math.random() * pastelColors.length)];
+            document.getElementById('paper-area').style.backgroundColor = currentPaperColor;
+        }
+
+        function showSection(id) {
+            document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
+            document.getElementById(id + '-section').classList.add('active');
+            if(id === 'write') setRandomPaper();
+        }
+
+        function selectWeather(el, w) {
+            document.querySelectorAll('.weather-btn').forEach(b => b.classList.remove('selected'));
+            el.classList.add('selected');
+            selectedWeather = w;
+        }
+
+        function deselectAll(e) {
+            if(!e.target.closest('.sticker-wrapper')) {
+                document.querySelectorAll('.sticker-wrapper').forEach(s => s.classList.remove('selected'));
+            }
+        }
+
+        function createStickerElement(content, type, state, parentId) {
+            if(!content || content === "undefined") return;
+            const wrapper = document.createElement('div');
+            wrapper.className = 'sticker-wrapper';
+            wrapper.innerHTML = `<div class="delete-btn">×</div><div class="resize-handle"></div>`;
+            if(type === 'image') {
+                const img = document.createElement('img'); img.src = content; wrapper.appendChild(img);
+                wrapper.dataset.base64 = content;
+            } else {
+                const span = document.createElement('span'); span.className = 'sticker-content';
+                span.innerText = content; wrapper.appendChild(span);
+            }
+            const apply = () => {
+                wrapper.style.left = state.x + 'px'; wrapper.style.top = state.y + 'px';
+                if(type === 'image') { wrapper.style.width = (110 * state.scale) + 'px'; }
+                else { const c = wrapper.querySelector('.sticker-content'); if(c) c.style.fontSize = (40 * state.scale) + 'px'; }
+                wrapper.style.transform = `translate(-50%, -50%) rotate(${state.rotation || 0}deg)`;
+            };
+            wrapper.addEventListener('touchstart', e => {
+                e.stopPropagation(); if(e.target.classList.contains('resize-handle')) return;
+                document.querySelectorAll('.sticker-wrapper').forEach(s => s.classList.remove('selected'));
+                wrapper.classList.add('selected');
+                const t = e.touches[0]; const ox = t.clientX - state.x; const oy = t.clientY - state.y;
+                const move = me => { me.preventDefault(); state.x = me.touches[0].clientX - ox; state.y = me.touches[0].clientY - oy; apply(); };
+                const end = () => { window.removeEventListener('touchmove', move); window.removeEventListener('touchend', end); };
+                window.addEventListener('touchmove', move, {passive: false});
+                window.addEventListener('touchend', end);
+            }, {passive: false});
+            wrapper.querySelector('.resize-handle').addEventListener('touchstart', e => {
+                e.stopPropagation(); e.preventDefault();
+                const t = e.touches[0]; const startDist = Math.hypot(t.clientX - state.x, t.clientY - state.y);
+                const startScale = state.scale;
+                const move = me => { me.preventDefault(); const dist = Math.hypot(me.touches[0].clientX - state.x, me.touches[0].clientY - state.y); state.scale = startScale * (dist / startDist); apply(); };
+                const end = () => { window.removeEventListener('touchmove', move); window.removeEventListener('touchend', end); };
+                window.addEventListener('touchmove', move, {passive: false});
+                window.addEventListener('touchend', end);
+            }, {passive: false});
+            wrapper.querySelector('.delete-btn').addEventListener('touchstart', e => { e.stopPropagation(); wrapper.remove(); });
+            document.getElementById(parentId).appendChild(wrapper);
+            apply();
+        }
+
+        // 이미지 압축 및 사진 추가
+        function addPhotoSticker(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const img = new Image();
+                    img.onload = function () {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 400; // 용량 확보를 위해 크기 제한
+                        let width = img.width, height = img.height;
+                        if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+                        canvas.width = width; canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        const compressedData = canvas.toDataURL('image/webp', 0.7); // webp로 압축
+                        createStickerElement(compressedData, 'image', {x:150, y:200, scale:1}, 'write-section');
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        async function saveCover() {
+            const data = [];
+            document.querySelectorAll('#diary-cover .sticker-wrapper').forEach(el => {
+                const isImg = el.querySelector('img'); const contentEl = el.querySelector('.sticker-content');
+                data.push({ content: isImg ? el.dataset.base64 : (contentEl ? contentEl.innerText : ""), type: isImg ? 'image' : 'text', x: parseFloat(el.style.left), y: parseFloat(el.style.top), scale: isImg ? parseFloat(el.style.width)/110 : (contentEl ? parseFloat(contentEl.style.fontSize)/40 : 1) });
+            });
+            const p = new URLSearchParams(); p.append('type', 'saveCover'); p.append('data', JSON.stringify(data));
+            await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: p });
+            alert("표지 저장! 💾");
+        }
+
+        async function loadCover() {
+            try {
+                const res = await fetch(GAS_URL + "?type=getCover");
+                const data = await res.json();
+                data.forEach(d => { if(d.content && d.content !== "undefined") createStickerElement(d.content, d.type || 'text', d, 'diary-cover'); });
+            } catch(e) {}
+        }
+
+        async function saveDiary() {
+            const title = document.getElementById('diary-title').value, body = document.getElementById('diary-body').value;
+            if(!title || !body) return alert("내용을 채워줘!");
+            const btn = document.getElementById('send-btn');
+            btn.innerText = "저장 중..."; btn.disabled = true;
+            const photoEl = document.querySelector('#write-section .sticker-wrapper');
+            const p = new URLSearchParams();
+            p.append('date', new Date().toLocaleDateString()); 
+            p.append('weather', selectedWeather);
+            p.append('title', title); p.append('body', body);
+            p.append('paperColor', currentPaperColor);
+            if(photoEl && photoEl.dataset.base64) {
+                p.append('photo', photoEl.dataset.base64);
+                p.append('photoX', parseFloat(photoEl.style.left)); p.append('photoY', parseFloat(photoEl.style.top));
+                p.append('photoScale', parseFloat(photoEl.style.width)/110);
+            }
+            try {
+                await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: p });
+                alert("저장 완료! ✨"); location.reload();
+            } catch(e) { alert("오류 발생!"); btn.disabled = false; btn.innerText = "저장 ✨"; }
+        }
+
+        async function fetchDiaryList() {
+            showSection('view'); document.getElementById('v-body').innerText = "로딩 중...";
+            const res = await fetch(GAS_URL); diaryData = await res.json();
+            if(diaryData.length > 0) { currentIndex = 0; updateView(); }
+        }
+
+        function updateView() {
+            const item = diaryData[currentIndex];
+            document.getElementById('paper-area').style.backgroundColor = item.paperColor || '#ffffff';
+            document.getElementById('v-date').innerText = `${item.date} ${item.weather || ''}`;
+            document.getElementById('v-title').innerText = item.title;
+            document.getElementById('v-body').innerText = item.body;
+            const area = document.getElementById('v-photo-area'); area.innerHTML = "";
+            if(item.photo && item.photo.length > 10) {
+                const img = document.createElement('img'); img.src = item.photo;
+                img.style.position = "absolute"; img.style.left = item.photoX + 'px'; img.style.top = item.photoY + 'px';
+                img.style.width = (110 * (item.photoScale || 1)) + 'px'; img.style.transform = "translate(-50%, -50%)";
+                area.appendChild(img);
+            }
+        }
+
+        function jumpToDate(val) {
+            const d = new Date(val).toLocaleDateString();
+            const idx = diaryData.findIndex(item => item.date === d);
+            if(idx !== -1) { currentIndex = idx; updateView(); } else alert("일기가 없어!");
+        }
+
+        let tsX = 0;
+        document.getElementById('view-section').addEventListener('touchstart', e => tsX = e.touches[0].clientX);
+        document.getElementById('view-section').addEventListener('touchend', e => {
+            const diff = tsX - e.changedTouches[0].clientX;
+            if(Math.abs(diff) > 50) {
+                if(diff > 0 && currentIndex < diaryData.length-1) { currentIndex++; updateView(); }
+                else if(diff < 0 && currentIndex > 0) { currentIndex--; updateView(); }
+            }
+        });
+    </script>
+</body>
+</html>
